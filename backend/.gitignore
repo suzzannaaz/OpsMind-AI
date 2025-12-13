@@ -1,0 +1,39 @@
+# =========================
+# Node.js / Backend
+# =========================
+node_modules/
+.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+uploads/        # Uploaded PDFs / temporary files
+
+# =========================
+# MongoDB / Database
+# =========================
+*.dump
+*.backup
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# =========================
+# Frontend (if added later)
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
