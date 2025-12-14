@@ -1,14 +1,21 @@
+//search.route.js
 import express from "express";
-import { retrieveChunks } from "../services/search.service.js";
+import { searchSOP } from "../services/search.service.js";
 
 const router = express.Router();
 
+// POST /search
 router.post("/", async (req, res) => {
-  const { query } = req.body;
-  if (!query) return res.status(400).json({ error: "Query is required" });
+  try {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: "Query is required" });
 
-  const results = await retrieveChunks(query, 5); // top 5
-  res.json(results);
+    const results = await searchSOP(query, 5); // return top 5 matches
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 export default router;

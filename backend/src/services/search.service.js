@@ -1,42 +1,38 @@
 import SopChunk from "../models/sopChunk.js";
-import { getEmbedding } from "./embed.service.js";
+import { generateEmbedding } from "./embed.service.js"; // your embedding generator
 
-// Helper: Cosine similarity between two vectors
-const cosineSim = (a, b) => {
-  let dot = 0, magA = 0, magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
-};
+// Cosine similarity helper
+function cosineSimilarity(vecA, vecB) {
+  const dot = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
+  const magA = Math.sqrt(vecA.reduce((sum, val) => sum + val * val, 0));
+  const magB = Math.sqrt(vecB.reduce((sum, val) => sum + val * val, 0));
+  return dot / (magA * magB);
+}
 
-// Retrieve top K chunks by similarity
-export const retrieveChunks = async (query, topK = 5) => {
-  try {
-    // 1️⃣ Get query embedding
-    const queryVector = await getEmbedding(query);
+export const searchSOP = async (query, topK = 3, minScore = 0.5) => {
+  // 1. Generate embedding for query
+  const queryEmbedding = await generateEmbedding(query);
 
-    // 2️⃣ Fetch all chunks from MongoDB
-    const chunks = await SopChunk.find(); // get all documents
+  // 2. Fetch all chunks from MongoDB
+  const allChunks = await SopChunk.find();
 
-    // 3️⃣ Compute similarity score for each chunk
-    const scoredChunks = chunks.map(chunk => ({
-      ...chunk._doc,
-      score: cosineSim(queryVector, chunk.embedding),
-    }));
+  // 3. Compute similarity scores
+  const scored = allChunks.map(chunk => ({
+    chunk,
+    score: cosineSimilarity(queryEmbedding, chunk.embedding)
+  }));
 
-    // 4️⃣ Sort by score descending
-    scoredChunks.sort((a, b) => b.score - a.score);
+  // 4. Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
 
-    // 5️⃣ Return top K
-    const results = scoredChunks.slice(0, topK);
+  // 5. Filter by minimum score
+  const filtered = scored.filter(item => item.score >= minScore);
 
-    console.log(`[RAG] Query: "${query}" → Retrieved ${results.length} chunks`);
-    return results;
-  } catch (err) {
-    console.error("Vector search error:", err);
-    return [];
-  }
+  // 6. Return top K of filtered results
+  return filtered.slice(0, topK).map(item => ({
+    text: item.chunk.text,
+    source: item.chunk.source,
+    page: item.chunk.page,
+    score: item.score
+  }));
 };

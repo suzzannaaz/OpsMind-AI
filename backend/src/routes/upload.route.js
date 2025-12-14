@@ -9,7 +9,7 @@ import { deleteFile, isPDF } from "../utils/file.util.js";
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-router.post("/upload", upload.single("file"), async (req, res) => {
+router.post("/", upload.single("file"), async (req, res) => {
   try {
     // ✅ Validate file type
     if (!isPDF(req.file)) {

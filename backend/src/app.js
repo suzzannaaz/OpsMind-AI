@@ -8,7 +8,7 @@ const app = express();
 app.use(express.json());
 
 // Routes
-app.use("/api", uploadRoute);
+app.use("/api/upload", uploadRoute);
 app.use("/api/search", searchRoute);
 
 export default app;
