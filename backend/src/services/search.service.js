@@ -1,5 +1,5 @@
 import SopChunk from "../models/sopChunk.js";
-import { generateEmbedding } from "./embed.service.js"; // your embedding generator
+import { generateEmbedding } from "./embed.service.js";
 
 // Cosine similarity helper
 function cosineSimilarity(vecA, vecB) {
@@ -13,26 +13,26 @@ export const searchSOP = async (query, topK = 3, minScore = 0.5) => {
   // 1. Generate embedding for query
   const queryEmbedding = await generateEmbedding(query);
 
-  // 2. Fetch all chunks from MongoDB
+  // 2. Fetch all chunks
   const allChunks = await SopChunk.find();
 
-  // 3. Compute similarity scores
+  // 3. Score chunks
   const scored = allChunks.map(chunk => ({
     chunk,
-    score: cosineSimilarity(queryEmbedding, chunk.embedding)
+    score: cosineSimilarity(queryEmbedding, chunk.embedding),
   }));
 
-  // 4. Sort by score descending
+  // 4. Sort by similarity
   scored.sort((a, b) => b.score - a.score);
 
-  // 5. Filter by minimum score
+  // 5. Filter by threshold
   const filtered = scored.filter(item => item.score >= minScore);
 
-  // 6. Return top K of filtered results
+  // 6. Return top K with citation info
   return filtered.slice(0, topK).map(item => ({
     text: item.chunk.text,
-    source: item.chunk.source,
-    page: item.chunk.page,
-    score: item.score
+    source: item.chunk.metadata.source,
+    page: item.chunk.metadata.page,
+    score: item.score,
   }));
 };
