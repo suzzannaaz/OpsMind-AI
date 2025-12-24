@@ -1,10 +1,12 @@
-// utils/file.util.js
 import fs from "fs";
+import path from "path";
 
-export const deleteFile = (path) => {
-  fs.unlink(path, (err) => {
-    if (err) console.error("Error deleting file:", err);
-  });
+export const isPDF = (file) => {
+  return file && path.extname(file.originalname).toLowerCase() === ".pdf";
 };
 
-export const isPDF = (file) => file.mimetype === "application/pdf";
+export const deleteFile = (filePath) => {
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+};

@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import SopChunk from "../models/sopChunk.js";
-import { extractTextFromPDF } from "../services/pdf.service.js"; // using pdfjs-dist
+import { extractTextFromPDF } from "../services/pdf.service.js";
 import { chunkText } from "../services/chunk.service.js";
 import { generateEmbedding } from "../services/embed.service.js";
 import { deleteFile, isPDF } from "../utils/file.util.js";
@@ -11,39 +11,49 @@ const upload = multer({ dest: "uploads/" });
 
 router.post("/", upload.single("file"), async (req, res) => {
   try {
-    // ✅ Validate file type
     if (!isPDF(req.file)) {
       if (req.file) deleteFile(req.file.path);
       return res.status(400).json({ error: "Only PDF files are allowed" });
     }
 
-    // 1️⃣ Extract text from PDF using pdfjs-dist
-    const text = await extractTextFromPDF(req.file.path);
+    // 1️⃣ Extract pages with text
+    const pages = await extractTextFromPDF(req.file.path);
 
-    if (!text || text.trim().length === 0) {
+    if (!pages.length) {
+      if (req.file) deleteFile(req.file.path);
       return res.status(400).json({ error: "PDF is empty or could not be parsed" });
     }
 
-    // 2️⃣ Chunk text
-    const chunks = chunkText(text);
+    // 2️⃣ Chunk pages while keeping page numbers
+    const meaningfulChunks = [];
+    for (const page of pages) {
+      const pageChunks = chunkText(page.text, page.page);
+      meaningfulChunks.push(...pageChunks);
+    }
 
     // 3️⃣ Generate embeddings and store in MongoDB
-    for (const chunk of chunks) {
-      const embedding = await generateEmbedding(chunk);
+    for (const chunk of meaningfulChunks) {
+      const embedding = await generateEmbedding(chunk.text);
 
       await SopChunk.create({
-        text: chunk,
+        text: chunk.text,
         embedding,
-        metadata: { source: req.file.originalname },
+        metadata: {
+          source: req.file.originalname,
+          page: chunk.page,
+        },
       });
     }
 
-    res.json({ message: "SOP ingested successfully" });
+    res.json({
+      message: "SOP ingested successfully",
+      totalChunks: meaningfulChunks.length,
+    });
+
   } catch (err) {
-    console.error("Upload route error:", err); // ✅ log error to console
+    console.error("Upload route error:", err);
     res.status(500).json({ error: err.message });
   } finally {
-    // Delete the uploaded file after processing
     if (req.file) deleteFile(req.file.path);
   }
 });

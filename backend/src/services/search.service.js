@@ -1,38 +1,62 @@
 import SopChunk from "../models/sopChunk.js";
 import { generateEmbedding } from "./embed.service.js";
 
-// Cosine similarity helper
-function cosineSimilarity(vecA, vecB) {
-  const dot = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
-  const magA = Math.sqrt(vecA.reduce((sum, val) => sum + val * val, 0));
-  const magB = Math.sqrt(vecB.reduce((sum, val) => sum + val * val, 0));
-  return dot / (magA * magB);
-}
+/**
+ * Retrieve top K relevant chunks for a query
+ * @param {string} query - User query
+ * @param {number} topK - Number of chunks to return
+ * @param {number} maxContextTokens - Maximum total tokens allowed in context
+ * @returns Array of chunks with text, source, and page
+ */
+export const retrieveChunksWithContext = async (
+  query,
+  topK = 5,
+  maxContextTokens = 2000
+) => {
+  if (!query || query.trim().length === 0) return [];
 
-export const searchSOP = async (query, topK = 3, minScore = 0.5) => {
-  // 1. Generate embedding for query
+  // 1️⃣ Generate embedding for the query
   const queryEmbedding = await generateEmbedding(query);
 
-  // 2. Fetch all chunks
+  // 2️⃣ Fetch all SOP chunks
   const allChunks = await SopChunk.find();
 
-  // 3. Score chunks
-  const scored = allChunks.map(chunk => ({
-    chunk,
-    score: cosineSimilarity(queryEmbedding, chunk.embedding),
-  }));
+  // 3️⃣ Compute cosine similarity
+  const similarity = allChunks
+    .map(chunk => {
+      if (!chunk.text || chunk.text.trim().length < 20) return null;
 
-  // 4. Sort by similarity
-  scored.sort((a, b) => b.score - a.score);
+      const dot = chunk.embedding.reduce(
+        (acc, val, i) => acc + val * queryEmbedding[i],
+        0
+      );
+      const magA = Math.sqrt(chunk.embedding.reduce((acc, val) => acc + val ** 2, 0));
+      const magB = Math.sqrt(queryEmbedding.reduce((acc, val) => acc + val ** 2, 0));
+      const score = dot / (magA * magB);
 
-  // 5. Filter by threshold
-  const filtered = scored.filter(item => item.score >= minScore);
+      return { chunk, score };
+    })
+    .filter(Boolean);
 
-  // 6. Return top K with citation info
-  return filtered.slice(0, topK).map(item => ({
-    text: item.chunk.text,
-    source: item.chunk.metadata.source,
-    page: item.chunk.metadata.page,
-    score: item.score,
-  }));
+  // 4️⃣ Sort by similarity
+  similarity.sort((a, b) => b.score - a.score);
+
+  // 5️⃣ Build context window
+  const contextChunks = [];
+  let totalTokens = 0;
+
+  for (const { chunk } of similarity.slice(0, topK)) {
+    const tokens = chunk.text.split(/\s+/).length;
+    if (totalTokens + tokens > maxContextTokens) break;
+
+    contextChunks.push({
+      text: chunk.text,
+      source: chunk.metadata.source,
+      page: chunk.metadata.page,
+    });
+
+    totalTokens += tokens;
+  }
+
+  return contextChunks;
 };
