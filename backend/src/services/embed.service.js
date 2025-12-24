@@ -16,3 +16,4 @@ export const generateEmbedding = async (text) => {
     throw err;
   }
 };
+

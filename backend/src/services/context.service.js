@@ -1,21 +1,21 @@
-/**
- * Build context string for user query
- * @param {Array} chunks - Array of { text, source, page }
- * @returns Formatted context string
- */
-export const buildContext = (chunks) => {
-  if (!chunks.length) {
-    return "No relevant SOP information found.";
+export const buildContext = (chunks, maxTokens = 2000) => {
+  if (!chunks.length) return "No relevant SOP information found.";
+
+  const contextChunks = [];
+  let totalTokens = 0;
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const tokens = chunk.text.split(/\s+/).length;
+
+    if (totalTokens + tokens > maxTokens) break;
+
+    contextChunks.push(
+      `SOURCE ${i + 1}:\nDocument: ${chunk.source}\nPage: ${chunk.page}\nContent:\n${chunk.text}`
+    );
+
+    totalTokens += tokens;
   }
 
-  return chunks
-    .map(
-      (chunk, i) =>
-        `SOURCE ${i + 1}:
-Document: ${chunk.source}
-Page: ${chunk.page}
-Content:
-${chunk.text}`
-    )
-    .join("\n\n---\n\n");
+  return contextChunks.join("\n\n---\n\n");
 };
