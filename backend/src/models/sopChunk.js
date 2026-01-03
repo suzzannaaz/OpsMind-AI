@@ -1,17 +1,11 @@
 import mongoose from "mongoose";
-const sopChunkSchema = new mongoose.Schema({
-  text: { type: String, required: true },
 
-  embedding: {
-    type: [Number],
-    required: true,
-  },
-
-  metadata: {
-    source: String,
-    page: Number,
-  },
-
-  chunkId: Number   // optional but recommended
+const SOPChunkSchema = new mongoose.Schema({
+  documentName: String,
+  chunkText: String,
+  embedding: [Number],
+  page: Number,
+  section: String
 });
-export default mongoose.model("SopChunk", sopChunkSchema);
+
+export default mongoose.model("SOPChunk", SOPChunkSchema);

@@ -1,14 +1,19 @@
 import express from "express";
-import uploadRoute from "./routes/upload.route.js";
-import searchRoute from "./routes/search.route.js";
+import { connectDB } from "./config/db.js";
+import sopRoutes from "./routes/sop.route.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
-
-// Middleware to parse JSON bodies
 app.use(express.json());
 
-// Routes
-app.use("/api/upload", uploadRoute);
-app.use("/api/search", searchRoute);
+// Connect to MongoDB
+connectDB();
 
-export default app;
+// Mount SOP routes
+app.use("/sop", sopRoutes);
+
+// Global error handler
+app.use(errorHandler);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
